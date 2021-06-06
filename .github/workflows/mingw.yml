@@ -1,0 +1,28 @@
+name: mingw
+
+on:
+  push:
+    branches: [ master ]
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install dependecies 📚
+        run: |
+          sudo apt-get update && sudo apt-get install -y cmake build-essential mingw-w64 
+      - uses: actions/checkout@v2
+      - name: Build
+        run: | 
+          mkdir build
+          cmake -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-w64-x86_64.cmake -B build -S .
+          cmake --build build -j4
+          mkdir deploy
+          cp build/tower4.exe deploy
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v1
+        with:
+          name: win
+          path: deploy

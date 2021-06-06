@@ -1,0 +1,54 @@
+name: web
+
+# Controls when the action will run. 
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:
+    branches: [ master ]
+
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Install dependecies 📚
+        run: |
+          sudo apt-get update && sudo apt-get install -y cmake build-essential
+      - uses: actions/checkout@v2
+      - name: Setup emsdk
+        uses: mymindstorm/setup-emsdk@v8
+        with:
+          # Make sure to set a version number!
+          version: 2.0.16
+          # This is the name of the cache folder.
+          # The cache folder will be placed in the build directory,
+          #  so make sure it doesn't conflict with anything!
+          actions-cache-folder: 'emsdk-cache'
+      - name: Verify
+        run: emcc -v
+      - name: Build
+        run: | 
+          mkdir build
+          cd build
+          emcmake cmake -DCMAKE_BUILD_TYPE=MinSizeRel ..
+          cmake --build .
+          mkdir ./deploy
+          mv *.js *.wasm ./deploy
+          mv tower4.html ./deploy/index.html
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v1
+        with:
+          name: web
+          path: build/deploy
+      - name: Deploy to GitHub Pages 🚀
+        uses: JamesIves/github-pages-deploy-action@4.1.1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: gh-pages # The branch the action should deploy to.
+          FOLDER: build/deploy # The folder the action should deploy.
