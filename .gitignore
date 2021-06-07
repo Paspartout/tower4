@@ -3,3 +3,4 @@
 build*/
 deploy/
 compile_commands.json
+misc/

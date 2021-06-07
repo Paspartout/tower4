@@ -46,7 +46,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL Darwin)
         "-framework Metal")
 else()
     add_library(sokol STATIC deps/sokol/sokol.c ${SOKOL_HEADERS})
-    if (CMAKE_SYSTEM_NAME STREQUAL Linux)
+	if (CMAKE_SYSTEM_NAME STREQUAL Linux)
         target_link_libraries(sokol INTERFACE X11 Xi Xcursor GL dl m)
         target_link_libraries(sokol PUBLIC Threads::Threads)
     endif()
@@ -59,12 +59,18 @@ if (GENERATE_SHADERS)
                     COMMAND sokol-shdc ARGS --slang glsl330:glsl100:glsl300es
                     -i ${CMAKE_CURRENT_SOURCE_DIR}/src/shader/shapes.glsl -o ${CMAKE_CURRENT_SOURCE_DIR}/src/shader/shapes.glsl.h
                     MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/src/shader/shapes.glsl VERBATIM)
+    add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/shader/honeycomb.glsl.h
+                    COMMAND sokol-shdc ARGS --slang glsl330:glsl100:glsl300es
+                    -i ${CMAKE_CURRENT_SOURCE_DIR}/src/shader/honeycomb.glsl -o ${CMAKE_CURRENT_SOURCE_DIR}/src/shader/honeycomb.glsl.h
+                    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/src/shader/honeycomb.glsl VERBATIM)
+
 endif()
 
 # Executable
 # TODO: Move deps into their own library
 set(TOWER4_HEADERS
 	src/shader/shapes.glsl.h
+	src/shader/honeycomb.glsl.h
 	deps/HandmadeMath.h
     deps/rnd.h)
 set(TOWER4_SOURCES src/main.c ${TOWER4_HEADERS})
@@ -73,12 +79,14 @@ if(CMAKE_SYSTEM_NAME STREQUAL Windows)
 	add_executable(tower4 WIN32 ${TOWER4_SOURCES})
     target_link_libraries(tower4 ole32)
 else()
+	message(STATUS "CMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}")
     add_executable(tower4 ${TOWER4_SOURCES})
-    if(NOT CMAKE_SYSTEM_NAME STREQUAL Emscripten AND UNIX AND NOT APPLE)
-        target_link_libraries(tower4 asound)
-    endif()
 endif()
 target_link_libraries(tower4 sokol)
+if (CMAKE_SYSTEM_NAME STREQUAL Linux)
+	target_link_libraries(tower4 asound)
+endif()
+
 target_include_directories(tower4 PRIVATE deps)
 
 

@@ -20,10 +20,9 @@
 #define HANDMADE_MATH_NO_SSE
 #include "HandmadeMath.h"
 
-#include "shader/shapes.glsl.h"
+//#include "shader/shapes.glsl.h"
+#include "shader/honeycomb.glsl.h"
 
-#define N_PARTICLES 4096
-const float particle_size = 64.0f;
 static struct {
 	sg_pipeline pip;
 	sg_bindings bind;
@@ -37,7 +36,53 @@ static struct {
 
     vs_params_t vs_params;
     float rx, ry;
+
+	struct camera {
+		hmm_vec3 position;
+	
+		// Points away/opposite from camera direction
+		hmm_vec3 direction;
+		hmm_vec3 right;
+		hmm_vec3 up;
+	} camera;
+
 } state;
+
+static sshape_buffer_t build_pillar(const sshape_buffer_t *in_buf, const hmm_vec3 translation) {
+    const hmm_mat4 box_transform = HMM_Translate(HMM_AddVec3(translation, HMM_Vec3(0.0f, -1.5f, 0.0f)));
+    sshape_buffer_t buf = *in_buf;
+
+	buf = sshape_build_box(&buf, &(sshape_box_t){
+		.merge = true,
+		.width = 1.0f,
+		.height = 0.1f,
+		.depth = 1.0f,
+		.tiles = 1,
+		.transform = sshape_mat4(&box_transform.Elements[0][0])
+	});
+
+    const hmm_mat4 cylinder_transform = HMM_Translate(HMM_AddVec3(translation, HMM_Vec3(0.0f, 0.0f, 0.0f)));
+	buf = sshape_build_cylinder(&buf, &(sshape_cylinder_t){
+		.merge = true,
+        .radius = 0.5f,
+        .height = 3.0f,
+        .slices = 10,
+        .stacks = 3,
+		.transform = sshape_mat4(&cylinder_transform.Elements[0][0])
+	});
+
+    const hmm_mat4 box_transform2 = HMM_Translate(HMM_AddVec3(translation, HMM_Vec3(0.0f, 1.5f, 0.0f)));
+	buf = sshape_build_box(&buf, &(sshape_box_t){
+		.merge = true,
+		.width = 1.0f,
+		.height = 0.1f,
+		.depth = 1.0f,
+		.tiles = 1,
+		.transform = sshape_mat4(&box_transform2.Elements[0][0])
+	});
+
+	return buf;
+}
 
 
 static void init(void)
@@ -52,7 +97,7 @@ static void init(void)
 	io->FontGlobalScale = 2.0f;
 #endif
 
-	sg_shader shader = sg_make_shader(shapes_shader_desc(sg_query_backend()));
+	sg_shader shader = sg_make_shader(honeycomb_shader_desc(sg_query_backend()));
 
 	state.pass_action = (sg_pass_action) {
 		.colors[0] = { .action = SG_ACTION_CLEAR, .value = {0.0f, 0.0f, 0.0f, 1.0f}}
@@ -70,7 +115,7 @@ static void init(void)
 			}
 		},
         .index_type = SG_INDEXTYPE_UINT16,
-        .cull_mode = SG_CULLMODE_NONE,
+        .cull_mode = SG_CULLMODE_BACK,
         .depth = {
             .compare = SG_COMPAREFUNC_LESS_EQUAL,
             .write_enabled = true
@@ -85,35 +130,39 @@ static void init(void)
         .indices.buffer  = SSHAPE_RANGE(indices),
     };
 
-    const hmm_mat4 box_transform = HMM_Translate(HMM_Vec3(0.0f, -1.5f, 0.0f));
-	buf = sshape_build_box(&buf, &(sshape_box_t){
-		.width = 1.0f,
-		.height = 0.1f,
-		.depth = 1.0f,
-		.tiles = 1,
-		.transform = sshape_mat4(&box_transform.Elements[0][0])
+	// Floor
+	const hmm_mat4 floor_transform = HMM_Translate(HMM_Vec3(0, -1.5, 4.0));
+	buf = sshape_build_plane(&buf, &(sshape_plane_t){
+		.width = 10.0f,
+		.depth = 10.0f,
+		.transform = sshape_mat4(&floor_transform.Elements[0][0])
 	});
 
-    const hmm_mat4 cylinder_transform = HMM_Translate(HMM_Vec3(0.0f, 0.0f, 0.0f));
-	buf = sshape_build_cylinder(&buf, &(sshape_cylinder_t){
-		.merge = true,
-        .radius = 0.5f,
-        .height = 3.0f,
-        .slices = 8,
-        .stacks = 3,
-		.transform = sshape_mat4(&cylinder_transform.Elements[0][0])
-	});
+	// Pillars
+	for (int i = 0; i < 5; i++) {
+		const float dy = i * 2.0f;
+		buf = build_pillar(&buf, HMM_Vec3(2.0f, 0, dy));
+		buf = build_pillar(&buf, HMM_Vec3(-2.0f, 0, dy));
+	}
 
-    const hmm_mat4 box_transform2 = HMM_Translate(HMM_Vec3(0.0f, 1.5f, 0.0f));
+	const hmm_mat4 door_tf = HMM_Translate(HMM_Vec3(-0.55f, -0.5f, 0.5f));
 	buf = sshape_build_box(&buf, &(sshape_box_t){
 		.merge = true,
 		.width = 1.0f,
-		.height = 0.1f,
-		.depth = 1.0f,
+		.height = 2.0f,
+		.depth = 0.1f,
 		.tiles = 1,
-		.transform = sshape_mat4(&box_transform2.Elements[0][0])
+		.transform = sshape_mat4(&door_tf.Elements[0][0])
 	});
-
+	const hmm_mat4 door2_tf = HMM_Translate(HMM_Vec3(0.55f, -0.5f, 0.5f));
+	buf = sshape_build_box(&buf, &(sshape_box_t){
+		.merge = true,
+		.width = 1.0f,
+		.height = 2.0f,
+		.depth = 0.1f,
+		.tiles = 1,
+		.transform = sshape_mat4(&door2_tf.Elements[0][0])
+	});
 
     assert(buf.valid);
 
@@ -125,6 +174,11 @@ static void init(void)
     state.bind.vertex_buffers[0] = sg_make_buffer(&vbuf_desc);
     state.bind.index_buffer = sg_make_buffer(&ibuf_desc);
 
+	state.camera.position = (hmm_vec3){ .Z=15.f, .Y=-0.5f };
+	state.camera.direction = (hmm_vec3){ .Z=-1.0f };
+	state.camera.right = HMM_NormalizeVec3(HMM_Cross((hmm_vec3){ .Y=1.0f }, state.camera.direction));
+	state.camera.up = HMM_Cross(state.camera.direction, state.camera.right);
+
 	// ui
 	state.ui.show_synth = true;
 }
@@ -132,16 +186,18 @@ static void init(void)
 static uint64_t render_duration;
 
 static int audio_index = 0;
-static float amplitude = 0.2;
+static float amplitude = 0.5f;
+static float end_amplitude = 0.5f;
 static float freq = 440.0;
-static float mfreq = 440.0;
-static float freqfreq = 1.0;
-static float decay = 0.05f;
+static float mfreq = 30.0;
+static float freqfreq = 1.5;
+static float decay = 0.7f;
 static float audio_frames[2048*16];
 static bool audio_is_playing = false;
 
 static void frame(void)
 {
+	uint64_t now = stm_now();
 	const int width = sapp_width();
 	const int height = sapp_height();
 	const double delta_time = stm_sec(stm_round_to_common_refresh_rate(stm_laptime(&state.laptime)));
@@ -155,14 +211,22 @@ static void frame(void)
 		igBegin("Synth", &state.ui.show_synth, ImGuiWindowFlags_None);
 		igCheckbox("Enable", &audio_is_playing);
 		igSliderFloat("amplitude", &amplitude, 0, 1, "%f", ImGuiSliderFlags_None);
+		igSliderFloat("end_amplitude", &end_amplitude, 0, 1, "%f", ImGuiSliderFlags_None);
 		igSliderFloat("freq", &freq, 0, 2000, "%f", ImGuiSliderFlags_None);
 		igSliderFloat("mfreq", &mfreq, 0, 2000, "%f", ImGuiSliderFlags_None);
-		igSliderFloat("freqfreq", &freqfreq, 0, 10, "%f", ImGuiSliderFlags_None);
+		igSliderFloat("freqfreq", &freqfreq, 0, 100, "%f", ImGuiSliderFlags_None);
 		igSliderFloat("decay", &decay, 0, 1, "%f", ImGuiSliderFlags_None);
 		// TODO: Propper ringbuffer for plotting the waveforms?
 		// igPlotLinesFloatPtr("buffer", audio_frames, 2048, 0, "", -1.0 , 1.0, (ImVec2){200, 200}, 0);
 		igEnd();
 	}
+
+	igBegin("Camera", NULL, ImGuiSliderFlags_None);
+	igDragFloat("Camera X", &state.camera.position.X, 0.01f, -20.0f, 20.0f, "%f", ImGuiSliderFlags_None);
+	igDragFloat("Camera Y", &state.camera.position.Y, 0.01f, -20.0f, 20.0f, "%f", ImGuiSliderFlags_None);
+	igDragFloat("Camera Z", &state.camera.position.Z, 0.01f, -20.0f, 20.0f, "%f", ImGuiSliderFlags_None);
+	igValueFloat("Rendering: ", (float)stm_ms(render_duration), "%.2f ms");
+	igEnd();
 #endif
 
 	// TODO: Refactor
@@ -174,12 +238,16 @@ static void frame(void)
 			const float t = (float)audio_index / 44100.0f;
 			//audio_frames[i] = amplitude * sin((float)audio_index/44100.0 * freq *  M_PI * 2);
 			freq = mfreq * sin(t * freqfreq);
-			audio_frames[scnd_buf ? i+2048 : i] = amplitude * sin(freq * M_PI * 2);
+			float val = amplitude * sin(freq * M_PI * 2);
+			if (val >= 0.5) {
+				val = 0.5;
+			}
+			val *= end_amplitude;
+			audio_frames[scnd_buf ? i+2048 : i] = val;
 			audio_index++;
 		}
 
 		// Echo
-		const int decay_sampels = 1024;
 		for (int i = 0; i < 2048; i++)
 		{
 			// WARNING: overflow potential
@@ -194,10 +262,7 @@ static void frame(void)
 		scnd_buf = !scnd_buf;
 	}
 
-
-	// Render current state of game/simulation
-	uint64_t now = stm_now();
-	/* update instance data */
+	state.camera.position.Z -= .005f;
 
 	sg_begin_default_pass(&state.pass_action, width, height);
 	sg_apply_pipeline(state.pip);
@@ -206,19 +271,24 @@ static void frame(void)
 	// Render shapes
     // build model-view-projection matrix
 
-    state.rx += 1.0f;
-    state.ry += 2.0f;
-    hmm_mat4 proj = HMM_Perspective(60.0f, sapp_widthf()/sapp_heightf(), 0.01f, 10.0f);
-    hmm_mat4 view = HMM_LookAt(HMM_Vec3(0.0f, 1.5f, 6.0f), HMM_Vec3(0.0f, 0.0f, 0.0f), HMM_Vec3(0.0f, 1.0f, 0.0f));
+    hmm_mat4 proj = HMM_Perspective(60.0f, sapp_widthf()/sapp_heightf(), 0.01f, 1000.0f);
+
+    //hmm_mat4 view = HMM_LookAt(state.camera.position, HMM_AddVec3(state.camera.position, state.camera.direction), HMM_Vec3(0.0f, 1.0f, 0.0f));
+	hmm_vec3 center = HMM_AddVec3(state.camera.position, state.camera.direction);
+	//printf("Center: %f %f %f\n", center.X, center.Y, center.Z);
+
+    hmm_mat4 view = HMM_LookAt(state.camera.position, center, HMM_Vec3(0.0f, 1.0f, 0.0f));
+
     hmm_mat4 view_proj = HMM_MultiplyMat4(proj, view);
-    hmm_mat4 rxm = HMM_Rotate(state.rx, HMM_Vec3(1.0f, 0.0f, 0.0f));
-    hmm_mat4 rym = HMM_Rotate(state.ry, HMM_Vec3(0.0f, 1.0f, 0.0f));
-    hmm_mat4 model = HMM_MultiplyMat4(rxm, rym);
+
+    // hmm_mat4 rxm = HMM_Rotate(state.rx, HMM_Vec3(1.0f, 0.0f, 0.0f));
+    // hmm_mat4 rym = HMM_Rotate(state.ry, HMM_Vec3(0.0f, 1.0f, 0.0f));
+    hmm_mat4 model = HMM_Translate(HMM_Vec3(0.0, 0.0, 0.0));
+
     state.vs_params.mvp = HMM_MultiplyMat4(view_proj, model);
 
 	sg_apply_uniforms(SG_SHADERSTAGE_VS, SLOT_vs_params, &SG_RANGE(state.vs_params));
-	sg_draw(state.elms.base_element, state.elms.num_elements, N_PARTICLES);
-
+	sg_draw(state.elms.base_element, state.elms.num_elements, 1);
 #ifdef ENABLE_IMGUI
 	simgui_render();
 #endif

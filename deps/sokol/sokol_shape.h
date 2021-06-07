@@ -365,7 +365,9 @@
 #include <stdbool.h>
 
 #if !defined(SOKOL_GFX_INCLUDED)
-#error "Please include sokol_gfx.h before sokol_shape.h"
+// TODO: Remove?
+#include "sokol_gfx.h"
+//#error "Please include sokol_gfx.h before sokol_shape.h"
 #endif
 
 #if defined(SOKOL_API_DECL) && !defined(SOKOL_SHAPE_API_DECL)
@@ -1010,7 +1012,7 @@ SOKOL_API_IMPL sshape_buffer_t sshape_build_box(const sshape_buffer_t* in_buf, c
             for (uint32_t iz = 0; iz <= params.tiles; iz++) {
                 pos.z = z0 + dz * iz;
                 const _sshape_vec4_t tpos = _sshape_mat4_mul(&params.transform, pos);
-                const _sshape_vec2_t uv = _sshape_vec2(ix * duv, iz * duv);
+                const _sshape_vec2_t uv = _sshape_vec2(0.1f * ix * duv, 0.1f * iz * duv);
                 const uint32_t color = params.random_colors ? _sshape_rand_color(&rand_seed) : params.color;
                 _sshape_add_vertex(&buf, tpos, tnorm, uv, color);
             }
@@ -1027,7 +1029,7 @@ SOKOL_API_IMPL sshape_buffer_t sshape_build_box(const sshape_buffer_t* in_buf, c
             for (uint32_t iz = 0; iz <= params.tiles; iz++) {
                 pos.z = z0 + dz * iz;
                 const _sshape_vec4_t tpos = _sshape_mat4_mul(&params.transform, pos);
-                const _sshape_vec2_t uv = _sshape_vec2(iy * duv, iz * duv);
+                const _sshape_vec2_t uv = _sshape_vec2(0.1f * iy * duv, 0.1f * iz * duv);
                 const uint32_t color = params.random_colors ? _sshape_rand_color(&rand_seed) : params.color;
                 _sshape_add_vertex(&buf, tpos, tnorm, uv, color);
             }
@@ -1044,7 +1046,7 @@ SOKOL_API_IMPL sshape_buffer_t sshape_build_box(const sshape_buffer_t* in_buf, c
             for (uint32_t iy = 0; iy <= params.tiles; iy++) {
                 pos.y = y0 + dy * iy;
                 const _sshape_vec4_t tpos = _sshape_mat4_mul(&params.transform, pos);
-                const _sshape_vec2_t uv = _sshape_vec2(ix * duv, iy * duv);
+                const _sshape_vec2_t uv = _sshape_vec2(0.1f* ix * duv, 0.1f* iy * duv);
                 const uint32_t color = params.random_colors ? _sshape_rand_color(&rand_seed) : params.color;
                 _sshape_add_vertex(&buf, tpos, tnorm, uv, color);
             }
