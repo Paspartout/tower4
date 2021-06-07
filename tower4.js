@@ -551,10 +551,10 @@ function createWasm() {
  function receiveInstance(instance, module) {
   var exports = instance.exports;
   Module["asm"] = exports;
-  wasmMemory = Module["asm"]["sb"];
+  wasmMemory = Module["asm"]["qb"];
   updateGlobalBufferAndViews(wasmMemory.buffer);
-  wasmTable = Module["asm"]["ub"];
-  addOnInit(Module["asm"]["tb"]);
+  wasmTable = Module["asm"]["sb"];
+  addOnInit(Module["asm"]["rb"]);
   removeRunDependency("wasm-instantiate");
  }
  addRunDependency("wasm-instantiate");
@@ -1880,16 +1880,8 @@ function _glDrawArrays(mode, first, count) {
  GLctx.drawArrays(mode, first, count);
 }
 
-function _glDrawArraysInstancedANGLE(mode, first, count, primcount) {
- GLctx["drawArraysInstanced"](mode, first, count, primcount);
-}
-
 function _glDrawElements(mode, count, type, indices) {
  GLctx.drawElements(mode, count, type, indices);
-}
-
-function _glDrawElementsInstancedANGLE(mode, count, type, indices, primcount) {
- GLctx["drawElementsInstanced"](mode, count, type, indices, primcount);
 }
 
 function _glEnable(x0) {
@@ -2427,13 +2419,13 @@ for (var i = 0; i < 288; ++i) {
 
 var asmLibraryArg = {
  "ba": ___sys_fcntl64,
- "qb": ___sys_ioctl,
- "rb": ___sys_open,
+ "ob": ___sys_ioctl,
+ "pb": ___sys_open,
  "_": _emscripten_get_device_pixel_ratio,
  "Z": _emscripten_get_element_css_size,
- "ob": _emscripten_memcpy_big,
- "nb": _emscripten_request_animation_frame_loop,
- "mb": _emscripten_resize_heap,
+ "mb": _emscripten_memcpy_big,
+ "lb": _emscripten_request_animation_frame_loop,
+ "kb": _emscripten_resize_heap,
  "Y": _emscripten_set_canvas_element_size,
  "X": _emscripten_set_keydown_callback_on_thread,
  "W": _emscripten_set_keypress_callback_on_thread,
@@ -2445,7 +2437,7 @@ var asmLibraryArg = {
  "Q": _emscripten_set_mouseup_callback_on_thread,
  "P": _emscripten_set_pointerlockchange_callback_on_thread,
  "O": _emscripten_set_pointerlockerror_callback_on_thread,
- "lb": _emscripten_set_resize_callback_on_thread,
+ "jb": _emscripten_set_resize_callback_on_thread,
  "N": _emscripten_set_touchcancel_callback_on_thread,
  "M": _emscripten_set_touchend_callback_on_thread,
  "L": _emscripten_set_touchmove_callback_on_thread,
@@ -2454,48 +2446,46 @@ var asmLibraryArg = {
  "I": _emscripten_set_webglcontextrestored_callback_on_thread,
  "H": _emscripten_set_wheel_callback_on_thread,
  "G": _emscripten_webgl_create_context,
- "kb": _emscripten_webgl_enable_extension,
- "jb": _emscripten_webgl_init_context_attributes,
- "ib": _emscripten_webgl_make_context_current,
+ "ib": _emscripten_webgl_enable_extension,
+ "hb": _emscripten_webgl_init_context_attributes,
+ "gb": _emscripten_webgl_make_context_current,
  "aa": _fd_close,
- "pb": _fd_read,
+ "nb": _fd_read,
  "va": _fd_seek,
  "$": _fd_write,
  "F": _glActiveTexture,
  "E": _glAttachShader,
  "e": _glBindBuffer,
  "D": _glBindFramebuffer,
- "hb": _glBindRenderbuffer,
+ "fb": _glBindRenderbuffer,
  "f": _glBindTexture,
  "C": _glBlendColor,
  "B": _glBlendEquationSeparate,
  "A": _glBlendFuncSeparate,
- "gb": _glBufferData,
+ "eb": _glBufferData,
  "z": _glBufferSubData,
- "fb": _glClear,
- "eb": _glClearColor,
- "db": _glClearDepthf,
- "cb": _glClearStencil,
+ "db": _glClear,
+ "cb": _glClearColor,
+ "bb": _glClearDepthf,
+ "ab": _glClearStencil,
  "h": _glColorMask,
- "bb": _glCompileShader,
- "ab": _glCompressedTexImage2D,
- "$a": _glCreateProgram,
- "_a": _glCreateShader,
+ "$a": _glCompileShader,
+ "_a": _glCompressedTexImage2D,
+ "Za": _glCreateProgram,
+ "Ya": _glCreateShader,
  "y": _glCullFace,
- "Za": _glDeleteBuffers,
+ "Xa": _glDeleteBuffers,
  "m": _glDeleteFramebuffers,
  "x": _glDeleteProgram,
  "w": _glDeleteRenderbuffers,
  "l": _glDeleteShader,
- "Ya": _glDeleteTextures,
+ "Wa": _glDeleteTextures,
  "k": _glDepthFunc,
  "j": _glDepthMask,
  "a": _glDisable,
  "v": _glDisableVertexAttribArray,
- "Xa": _glDrawArrays,
- "Wa": _glDrawArraysInstancedANGLE,
- "Va": _glDrawElements,
- "Ua": _glDrawElementsInstancedANGLE,
+ "Va": _glDrawArrays,
+ "Ua": _glDrawElements,
  "c": _glEnable,
  "Ta": _glEnableVertexAttribArray,
  "u": _glFrontFace,
@@ -2557,59 +2547,59 @@ var asmLibraryArg = {
 var asm = createWasm();
 
 var ___wasm_call_ctors = Module["___wasm_call_ctors"] = function() {
- return (___wasm_call_ctors = Module["___wasm_call_ctors"] = Module["asm"]["tb"]).apply(null, arguments);
+ return (___wasm_call_ctors = Module["___wasm_call_ctors"] = Module["asm"]["rb"]).apply(null, arguments);
 };
 
 var __sapp_emsc_notify_keyboard_hidden = Module["__sapp_emsc_notify_keyboard_hidden"] = function() {
- return (__sapp_emsc_notify_keyboard_hidden = Module["__sapp_emsc_notify_keyboard_hidden"] = Module["asm"]["vb"]).apply(null, arguments);
+ return (__sapp_emsc_notify_keyboard_hidden = Module["__sapp_emsc_notify_keyboard_hidden"] = Module["asm"]["tb"]).apply(null, arguments);
 };
 
 var __sapp_emsc_onpaste = Module["__sapp_emsc_onpaste"] = function() {
- return (__sapp_emsc_onpaste = Module["__sapp_emsc_onpaste"] = Module["asm"]["wb"]).apply(null, arguments);
+ return (__sapp_emsc_onpaste = Module["__sapp_emsc_onpaste"] = Module["asm"]["ub"]).apply(null, arguments);
 };
 
 var __sapp_html5_get_ask_leave_site = Module["__sapp_html5_get_ask_leave_site"] = function() {
- return (__sapp_html5_get_ask_leave_site = Module["__sapp_html5_get_ask_leave_site"] = Module["asm"]["xb"]).apply(null, arguments);
+ return (__sapp_html5_get_ask_leave_site = Module["__sapp_html5_get_ask_leave_site"] = Module["asm"]["vb"]).apply(null, arguments);
 };
 
 var __sapp_emsc_begin_drop = Module["__sapp_emsc_begin_drop"] = function() {
- return (__sapp_emsc_begin_drop = Module["__sapp_emsc_begin_drop"] = Module["asm"]["yb"]).apply(null, arguments);
+ return (__sapp_emsc_begin_drop = Module["__sapp_emsc_begin_drop"] = Module["asm"]["wb"]).apply(null, arguments);
 };
 
 var __sapp_emsc_drop = Module["__sapp_emsc_drop"] = function() {
- return (__sapp_emsc_drop = Module["__sapp_emsc_drop"] = Module["asm"]["zb"]).apply(null, arguments);
+ return (__sapp_emsc_drop = Module["__sapp_emsc_drop"] = Module["asm"]["xb"]).apply(null, arguments);
 };
 
 var __sapp_emsc_end_drop = Module["__sapp_emsc_end_drop"] = function() {
- return (__sapp_emsc_end_drop = Module["__sapp_emsc_end_drop"] = Module["asm"]["Ab"]).apply(null, arguments);
+ return (__sapp_emsc_end_drop = Module["__sapp_emsc_end_drop"] = Module["asm"]["yb"]).apply(null, arguments);
 };
 
 var __sapp_emsc_invoke_fetch_cb = Module["__sapp_emsc_invoke_fetch_cb"] = function() {
- return (__sapp_emsc_invoke_fetch_cb = Module["__sapp_emsc_invoke_fetch_cb"] = Module["asm"]["Bb"]).apply(null, arguments);
+ return (__sapp_emsc_invoke_fetch_cb = Module["__sapp_emsc_invoke_fetch_cb"] = Module["asm"]["zb"]).apply(null, arguments);
 };
 
 var _main = Module["_main"] = function() {
- return (_main = Module["_main"] = Module["asm"]["Cb"]).apply(null, arguments);
+ return (_main = Module["_main"] = Module["asm"]["Ab"]).apply(null, arguments);
 };
 
 var _malloc = Module["_malloc"] = function() {
- return (_malloc = Module["_malloc"] = Module["asm"]["Db"]).apply(null, arguments);
+ return (_malloc = Module["_malloc"] = Module["asm"]["Bb"]).apply(null, arguments);
 };
 
 var __saudio_emsc_pull = Module["__saudio_emsc_pull"] = function() {
- return (__saudio_emsc_pull = Module["__saudio_emsc_pull"] = Module["asm"]["Eb"]).apply(null, arguments);
+ return (__saudio_emsc_pull = Module["__saudio_emsc_pull"] = Module["asm"]["Cb"]).apply(null, arguments);
 };
 
 var stackSave = Module["stackSave"] = function() {
- return (stackSave = Module["stackSave"] = Module["asm"]["Fb"]).apply(null, arguments);
+ return (stackSave = Module["stackSave"] = Module["asm"]["Db"]).apply(null, arguments);
 };
 
 var stackRestore = Module["stackRestore"] = function() {
- return (stackRestore = Module["stackRestore"] = Module["asm"]["Gb"]).apply(null, arguments);
+ return (stackRestore = Module["stackRestore"] = Module["asm"]["Eb"]).apply(null, arguments);
 };
 
 var stackAlloc = Module["stackAlloc"] = function() {
- return (stackAlloc = Module["stackAlloc"] = Module["asm"]["Hb"]).apply(null, arguments);
+ return (stackAlloc = Module["stackAlloc"] = Module["asm"]["Fb"]).apply(null, arguments);
 };
 
 var calledRun;
