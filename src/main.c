@@ -21,8 +21,8 @@
 #define HANDMADE_MATH_NO_SSE
 #include "HandmadeMath.h"
 
-//#include "shader/shapes.glsl.h"
-#include "shader/honeycomb.glsl.h"
+#include "shader/shapes.glsl.h"
+//#include "shader/honeycomb.glsl.h"
 
 typedef struct audio_system {
 	int sample_index;  /// what sample we are playing/time indexx
@@ -39,6 +39,30 @@ typedef struct audio_system {
 	bool is_playing;
 } audio_system;
 
+typedef struct aabb_t {
+	float min_x;
+	float min_y;
+	float min_z;
+
+	float max_x;
+	float max_y;
+	float max_z;
+} aabb_t;
+
+static bool aabb_collides(const aabb_t a, const aabb_t b) {
+	const bool x_collides = (a.min_x <= b.max_x && a.max_x >= b.min_x);
+	const bool y_collides = (a.min_y <= b.max_y && a.max_y >= b.min_y);
+	const bool z_collides = (a.min_z <= b.max_z && a.max_z >= b.min_z);
+	return x_collides && y_collides && z_collides;
+}
+
+typedef struct object_t {
+	hmm_vec3 position;
+	aabb_t aabb;
+
+	// TODO: Mesh data
+} object_t;
+
 static struct {
 	sg_pipeline pip;
 	sg_bindings bind;
@@ -51,7 +75,6 @@ static struct {
 	} ui;
 
     vs_params_t vs_params;
-    float rx, ry;
 
 	struct camera {
 		hmm_vec3 position;
@@ -64,7 +87,10 @@ static struct {
 		float pitch;
 		float yaw;
 	} camera;
+	aabb_t player_aabb;
 
+	aabb_t aabbs[16];
+	int n_aabbs;
 	audio_system audio;
 
 	struct {
@@ -164,6 +190,55 @@ static sshape_buffer_t build_pillar(const sshape_buffer_t *in_buf, const hmm_vec
 }
 
 
+static void build_test_level(void) {
+    // generate merged shape geometries
+    sshape_vertex_t vertices[6 * 1024];
+    uint16_t indices[16 * 1024];
+    sshape_buffer_t buf = {
+        .vertices.buffer = SSHAPE_RANGE(vertices),
+        .indices.buffer  = SSHAPE_RANGE(indices),
+    };
+
+	// Floor
+	const hmm_mat4 floor_transform = HMM_Translate(HMM_Vec3(0, 0, 0));
+	buf = sshape_build_plane(&buf, &(sshape_plane_t){
+		.width = 10.0f,
+		.depth = 10.0f,
+		.transform = sshape_mat4(&floor_transform.Elements[0][0])
+	});
+
+	const hmm_mat4 box_transform = HMM_Translate(HMM_Vec3(0, 1.0f, 0));
+	sshape_box_t box = {
+		.merge = true,
+		.width = 2.0f,
+		.height = 2.0f,
+		.depth = 2.0f,
+		.tiles = 1,
+		.transform = sshape_mat4(&box_transform.Elements[0][0])
+	};
+	buf = sshape_build_box(&buf, &box);
+	aabb_t box_aabb = {
+		.min_x = -box.width * 0.5f,
+		.max_x = box.width * 0.5f,
+		.min_y = -box.height * 0.5f,
+		.max_y = box.height * 0.5f,
+		.min_z = -box.depth * 0.5f,
+		.max_z = box.depth * 0.5f,
+	};
+	state.aabbs[0] = box_aabb;
+	state.n_aabbs = 1;
+
+    assert(buf.valid);
+
+    // extract element range for sg_draw()
+    state.elms = sshape_element_range(&buf);
+    const sg_buffer_desc vbuf_desc = sshape_vertex_buffer_desc(&buf);
+    const sg_buffer_desc ibuf_desc = sshape_index_buffer_desc(&buf);
+	// TODO: somehow return this instead of setting state
+    state.bind.vertex_buffers[0] = sg_make_buffer(&vbuf_desc);
+    state.bind.index_buffer = sg_make_buffer(&ibuf_desc);
+}
+
 static void build_level(void) {
     // generate merged shape geometries
     sshape_vertex_t vertices[6 * 1024];
@@ -218,6 +293,22 @@ static void build_level(void) {
     state.bind.index_buffer = sg_make_buffer(&ibuf_desc);
 }
 
+
+static aabb_t make_player_aabb(const hmm_vec3 pos) {
+	const float player_width = 1.0;
+	const float player_height = 2.0;
+
+	// TODO: Refine aabb to not be in the center around camera?
+	return (aabb_t){
+		.min_x = pos.X - 0.5f * player_width,
+		.max_x = pos.X + 0.5f * player_width,
+		.min_y = pos.Y - 0.5f * player_height,
+		.max_y = pos.Y + 0.5f * player_height,
+		.min_z = pos.Z - 0.5f * player_width,
+		.max_z = pos.Z + 0.5f * player_width,
+	};
+}
+
 static void camera_update() {
 	const float yaw = HMM_ToRadians(state.camera.yaw);
 	const float pitch = HMM_ToRadians(state.camera.pitch);
@@ -238,7 +329,8 @@ static void init(void)
 	io->FontGlobalScale = 2.0f;
 #endif
 
-	sg_shader shader = sg_make_shader(honeycomb_shader_desc(sg_query_backend()));
+	//sg_shader shader = sg_make_shader(shapes_shader_desc(sg_query_backend()));
+	sg_shader shader = sg_make_shader(shapes_shader_desc(sg_query_backend()));
 
 	state.pass_action = (sg_pass_action) {
 		.colors[0] = { .action = SG_ACTION_CLEAR, .value = {0.0f, 0.0f, 0.0f, 1.0f}}
@@ -263,9 +355,9 @@ static void init(void)
         },
 	});
 
-	build_level();
+	build_test_level();
 
-	state.camera.position = (hmm_vec3){ .Z=15.f, .Y=-0.5f };
+	state.camera.position = (hmm_vec3){ .Z=15.f, .Y=1.5f };
 	state.camera.direction = (hmm_vec3){ .Z=-1.0f };
 	state.camera.right = HMM_NormalizeVec3(HMM_Cross((hmm_vec3){ .Y=1.0f }, state.camera.direction));
 	state.camera.up = HMM_Cross(state.camera.direction, state.camera.right);
@@ -283,6 +375,7 @@ static void init(void)
 static uint64_t render_duration;
 
 
+#ifdef ENABLE_IMGUI
 static void audio_ui(audio_system* as) {
 		igBegin("Synth", &state.ui.show_synth, ImGuiWindowFlags_None);
 		igCheckbox("Enable", &as->is_playing);
@@ -296,6 +389,7 @@ static void audio_ui(audio_system* as) {
 		// igPlotLinesFloatPtr("buffer", audio_frames, 2048, 0, "", -1.0 , 1.0, (ImVec2){200, 200}, 0);
 		igEnd();
 }
+#endif
 
 
 
@@ -326,28 +420,44 @@ static void frame(void)
 	igDragFloat("Sensitivity", &state.mouse_sensitivity, 0.001f, 0.0f, 1.0f, "%f", ImGuiSliderFlags_None);
 	igValueFloat("Pitch: ", state.camera.pitch, "%.2f °");
 	igValueFloat("YAW: ", state.camera.yaw, "%.2f °");
+
+	igText("Cube");
+
+	igValueFloat("min_x", state.aabbs[0].min_x, "%.2f");
+	igValueFloat("max_x", state.aabbs[0].max_x, "%.2f");
+	igValueFloat("min_y", state.aabbs[0].min_y, "%.2f");
+	igValueFloat("max_y", state.aabbs[0].max_y, "%.2f");
+	igValueFloat("min_z", state.aabbs[0].min_z, "%.2f");
+	igValueFloat("max_z", state.aabbs[0].max_z, "%.2f");
+
 	igEnd();
 #endif
 
 	hmm_vec3 dir = state.camera.direction;
+	hmm_vec3 input_vec = {0};
+
 	if (state.input.forward_down) {
-		hmm_vec3 vel = HMM_MultiplyVec3f(dir, state.movement_speed);
-		vel.Y = 0;
-		state.camera.position = HMM_AddVec3(state.camera.position, vel);
+		input_vec = dir;
 	} else if (state.input.back_down) {
-		hmm_vec3 vel = HMM_MultiplyVec3f(dir, state.movement_speed);
-		vel.Y = 0;
-		state.camera.position = HMM_SubtractVec3(state.camera.position, vel);
+		input_vec = HMM_MultiplyVec3f(dir, -1);
 	}
 	if (state.input.left_down) {
-		hmm_vec3 vel = HMM_Cross(dir, state.camera.up);
-		vel.Y = 0;
-		state.camera.position = HMM_SubtractVec3(state.camera.position, HMM_MultiplyVec3f(HMM_NormalizeVec3(vel), state.movement_speed));
+		input_vec = HMM_MultiplyVec3f(HMM_NormalizeVec3(HMM_Cross(dir, state.camera.up)),-1);
 	} else if (state.input.right_down) {
-		hmm_vec3 vel = HMM_Cross(dir, state.camera.up);
-		vel.Y = 0;
-		state.camera.position = HMM_AddVec3(state.camera.position, HMM_MultiplyVec3f(HMM_NormalizeVec3(vel), state.movement_speed));
+		input_vec = HMM_NormalizeVec3(HMM_Cross(dir, state.camera.up));
 	}
+
+	hmm_vec3 vel = HMM_MultiplyVec3f(input_vec, state.movement_speed);
+	vel.Y = 0;
+	const hmm_vec3 new_position = HMM_AddVec3(state.camera.position, vel);
+
+	state.player_aabb = make_player_aabb(new_position);
+	// TODO: Check with every aabb in level
+	if (!aabb_collides(state.player_aabb, state.aabbs[0])) {
+		// No collision -> Allow movement
+		state.camera.position = new_position;
+	}
+
 	camera_update();
 
 	audio_play(&state.audio);
